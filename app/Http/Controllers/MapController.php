@@ -62,23 +62,29 @@ class MapController extends Controller
                 $latestReport = $station->reports->first();
                 
                 return [
-                    'id' => $station->id,
-                    'name' => $station->brand->name . ' ' . $station->name,
-                    'address' => $station->address,
-                    'brand_name' => $station->brand->name,
-                    'brand_color' => $station->brand->color_hex,
-                    'lat' => (float)$station->lat,
-                    'lng' => (float)$station->lng,
-                    'distance' => round($station->distance, 1),
-                    'status' => $latestReport?->status ?? 'unknown',
-                    'confidence' => $latestReport?->confidence_score ?? 0,
-                    'verified_count' => $latestReport?->verified_count ?? 0,
-                    'fuel_types' => $latestReport?->fuel_types ?? [],
-                    'reports_count' => $station->reports()->where('created_at', '>', now()->subHours(8))->count(),
-                    'updated_at' => $latestReport?->created_at?->diffForHumans() ?? 'Нет данных',
-                ];
+                'id' => $station->id,
+                'name' => $station->name,  
+                'brand_name' => $station->brand->name,
+                'brand_color' => $station->brand->color_hex,
+                'address' => $station->address,
+                'lat' => (float)$station->lat,
+                'lng' => (float)$station->lng,
+                'distance' => round($station->distance, 1),
+                'status' => $latestReport?->status ?? 'unknown',
+                'confidence' => $latestReport?->confidence_score ?? 0,
+                'verified_count' => $latestReport?->verified_count ?? 0,
+                'fuel_types' => $latestReport?->fuel_types ?? [],
+                'queue_size' => $latestReport?->queue_size,
+                'latest_report_id' => $latestReport?->id,
+                'reports_count' => $station->reports()
+                    ->where('created_at', '>', now()->subHours(8))
+                    ->count(),
+                'updated_at' => $latestReport?->created_at?->diffForHumans(),
+            ];
             });
 
             return response()->json($stations);
         }
+
+        
 }

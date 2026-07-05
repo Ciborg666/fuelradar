@@ -147,3 +147,27 @@ html:not(.light) .ymaps-2-1-79-controls__toolbar {
 html:not(.light) .ymaps-2-1-79-image {
     filter: invert(100%) hue-rotate(180deg);
 }
+
+/* Анимация пульсации для статуса "Есть топливо" */
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.animate-pulse {
+    animation: status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Плавный скролл в модалке */
+#stationModal > div::-webkit-scrollbar {
+    width: 6px;
+}
+
+#stationModal > div::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#stationModal > div::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 3px;
+}

@@ -89,7 +89,9 @@ function initEventListeners() {
     
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('findBestBtn').addEventListener('click', findBestStation);
-    document.getElementById('myLocationBtn').addEventListener('click', getUserLocation);
+    document.getElementById('myLocationBtn').addEventListener('click', () => {
+        getUserLocation(true);
+    });
     
     document.getElementById('closeStationModal').addEventListener('click', () => {
         document.getElementById('stationModal').classList.add('hidden');
@@ -158,6 +160,15 @@ function initEventListeners() {
             state.reportForm.status = status;
         });
     });
+
+    // Обработчик для кнопки "Разрешить геолокацию"
+    const requestLocationBtn = document.getElementById('requestLocationBtn');
+    if (requestLocationBtn) {
+        requestLocationBtn.addEventListener('click', () => {
+            getUserLocation(true);
+            requestLocationBtn.classList.add('hidden');
+        });
+    }
 }
 
 async function searchCity(query) {
@@ -236,7 +247,13 @@ function initMap() {
     });
     
     loadStations();
-    getUserLocation();
+    // Автоматически запрашиваем геолокацию только если нет сохранённой
+    const savedLocation = localStorage.getItem('userLocation');
+    if (!savedLocation) {
+        setTimeout(() => getUserLocation(true), 1000);
+    } else {
+        getUserLocation(false); // Тихо загружаем из кэша
+    }
     setInterval(() => loadStations(), 120000);
 }
 
@@ -593,41 +610,138 @@ function findBestStation() {
     }
 }
 
-function getUserLocation() {
+// ============================================
+// ГЕОЛОКАЦИЯ ПОЛЬЗОВАТЕЛЯ
+// ============================================
+// ============================================
+// ГЕОЛОКАЦИЯ ПОЛЬЗОВАТЕЛЯ
+// ============================================
+function getUserLocation(shouldNotify = true) {  // ✅ Переименовали параметр!
+    // Проверяем поддержку геолокации
     if (!navigator.geolocation) {
-        showNotification('Геолокация не поддерживается', 'error');
+        if (shouldNotify) {
+            showNotification('Геолокация не поддерживается вашим браузером', 'error');
+        }
         return;
     }
+
+    // Проверяем, есть ли сохранённая позиция
+    const savedLocation = localStorage.getItem('userLocation');
+    if (savedLocation) {
+        const location = JSON.parse(savedLocation);
+        state.userLocation = location;
+        
+        if (state.map) {
+            state.map.setCenter([location.lat, location.lng], 13, { duration: 500 });
+        }
+        
+        updateUserMarker();
+        
+        if (shouldNotify) {
+            showNotification('📍 Местоположение определено (из кэша)', 'success');
+        }
+        
+        setTimeout(() => loadStations(), 500);
+        return;
+    }
+
+    // Запрашиваем геолокацию
+    if (shouldNotify) {
+        showNotification('🔍 Запрашиваем разрешение на геолокацию...', 'info');
+    }
+
     navigator.geolocation.getCurrentPosition(
+        // ✅ Успех
         (position) => {
             state.userLocation = {
                 lat: position.coords.latitude,
-                lng: position.coords.longitude
+                lng: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                timestamp: Date.now()
             };
+
+            localStorage.setItem('userLocation', JSON.stringify(state.userLocation));
+
             if (state.map) {
                 state.map.setCenter([state.userLocation.lat, state.userLocation.lng], 13, { duration: 500 });
             }
-            if (state.userPlacemark && state.map) {
-                state.map.geoObjects.remove(state.userPlacemark);
+
+            updateUserMarker();
+
+            if (shouldNotify) {
+                showNotification('✅ Местоположение определено', 'success');
             }
-            
-            state.userPlacemark = new ymaps.Placemark(
-                [state.userLocation.lat, state.userLocation.lng],
-                { hintContent: '📍 Вы здесь' },
-                {
-                    preset: 'islands#blueCircleIcon'
-                }
-            );
-            
-            if (state.map) state.map.geoObjects.add(state.userPlacemark);
-            showNotification('Местоположение определено', 'success');
-            setTimeout(() => loadStations(), 1000);
+
+            setTimeout(() => loadStations(), 500);
         },
+        // ❌ Ошибка
         (error) => {
             console.error('Geolocation error:', error);
-            showNotification('Не удалось определить местоположение', 'error');
+            
+            let message = '';
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    message = '❌ Доступ к геолокации запрещён';
+                    const requestBtn = document.getElementById('requestLocationBtn');
+                    if (requestBtn) requestBtn.classList.remove('hidden');
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = '⚠️ Информация о местоположении недоступна';
+                    break;
+                case error.TIMEOUT:
+                    message = '⏱️ Превышено время ожидания';
+                    break;
+                default:
+                    message = '❌ Неизвестная ошибка геолокации';
+                    break;
+            }
+            
+            if (shouldNotify) {
+                showNotification(message, 'error');
+            }
+        },
+        // ⚙️ Опции
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000
         }
     );
+}
+
+// ============================================
+// ОБНОВИТЬ МАРКЕР ПОЛЬЗОВАТЕЛЯ
+// ============================================
+function updateUserMarker() {
+    if (!state.map || !state.userLocation) return;
+
+    // Удаляем старый маркер
+    if (state.userPlacemark) {
+        state.map.geoObjects.remove(state.userPlacemark);
+    }
+
+    // Создаём маркер пользователя (синяя точка с пульсацией)
+    state.userPlacemark = new ymaps.Placemark(
+        [state.userLocation.lat, state.userLocation.lng],
+        {
+            hintContent: '📍 Вы здесь',
+            balloonContent: `
+                <div style="padding: 10px; font-family: Arial, sans-serif;">
+                    <strong>Ваше местоположение</strong><br>
+                    <span style="font-size: 12px; color: #666;">
+                        Широта: ${state.userLocation.lat.toFixed(6)}<br>
+                        Долгота: ${state.userLocation.lng.toFixed(6)}
+                    </span>
+                </div>
+            `
+        },
+        {
+            preset: 'islands#blueCircleIcon',
+            iconColor: '#3b82f6'
+        }
+    );
+
+    state.map.geoObjects.add(state.userPlacemark);
 }
 
 function showNotification(message, type = 'info') {

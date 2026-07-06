@@ -69,7 +69,6 @@
                 </svg>
                 <span class="font-semibold hidden sm:block text-white">Разрешить геолокацию</span>
             </button>
-
         </div>
     </div>
 
@@ -260,23 +259,17 @@
 </div>
 
 {{-- ============================================= --}}
-{{-- СКРИПТЫ (в самом конце, после HTML)            --}}
+{{-- ДАННЫЕ И СКРИПТЫ (после HTML)                  --}}
 {{-- ============================================= --}}
 
-{{-- 1. CSRF токен для AJAX-запросов --}}
-<meta name="csrf-token" content="{{ csrf_token() }}">
-
-{{-- 2. Данные из Laravel (ДО подключения JS) --}}
+{{-- Данные из Laravel (ДО подключения fuel-radar.js) --}}
 <script>
     window.fuelRadarData = {
         fuels: @json($fuelTypes)
     };
 </script>
 
-{{-- 3. Яндекс.Карты --}}
-<script src="https://api-maps.yandex.ru/2.1/?apikey={{ config('services.yandex_maps.key') }}&lang=ru_RU" type="text/javascript"></script>
-
-{{-- 4. Основная логика приложения --}}
-<script src="{{ asset('js/fuel-radar.js') }}?v={{ filemtime(public_path('js/fuel-radar.js')) }}"></script>
+{{-- ✅ Основная логика приложения (через secure_asset для HTTPS) --}}
+<script src="{{ safe_asset('js/fuel-radar.js') }}?v={{ time() }}"></script>
 
 @endsection

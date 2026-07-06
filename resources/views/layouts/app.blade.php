@@ -12,24 +12,28 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
     
-  <!-- Яндекс.Карты API -->
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=1f51f1c5-a3cf-474d-b85a-9a80dd9c1c06&lang=ru_RU&suggest_apikey=1f51f1c5-a3cf-474d-b85a-9a80dd9c1c06" type="text/javascript"></script>
+    {{-- ✅ Яндекс.Карты API — ТОЛЬКО ОДИН РАЗ, через переменную окружения --}}
+    <script src="https://api-maps.yandex.ru/2.1/?apikey={{ config('services.yandex_maps.key') }}&lang=ru_RU" defer></script>
     
-    <!-- Tailwind CSS -->
+    {{-- Tailwind CSS --}}
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Наши стили -->
-    <link rel="stylesheet" href="{{ asset('css/fuelradar.css') }}">
+    {{-- ✅ Наши стили через secure_asset для HTTPS --}}
+    <link rel="stylesheet" href="{{ safe_asset('css/fuelradar.css') }}">
     
-    <!-- Тема -->
+    {{-- Тема --}}
     <script>
         (function() {
             const theme = localStorage.getItem('theme') || 'dark';
             if (theme === 'light') document.documentElement.classList.add('light');
         })();
     </script>
+    
+    @stack('styles')
 </head>
 <body class="font-sans antialiased bg-slate-900 text-white overflow-hidden">
     @yield('content')
+    
+    @stack('scripts')
 </body>
 </html>
